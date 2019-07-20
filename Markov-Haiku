@@ -1,0 +1,84 @@
+#!/usr/bin/python
+
+import sys
+import random as r
+import string
+import logging as l
+import time as t
+import argparse
+import os
+import subprocess
+import hyphenate as hy
+import urllib2
+
+
+def sendmessage(message):
+    subprocess.Popen(['notify-send', message])
+    return
+
+def choice(words):
+    r.seed
+    index = r.randint(0,len(words)-1)
+    return words[index]
+
+
+def run():
+    target_url = 'http://www.gutenberg.org/files/4300/4300-0.txt' #The Project Gutenberg EBook of Ulysses, by James Joyce
+    input_a = urllib2.urlopen(target_url)
+    input_b = input_a.read()
+    if not isinstance(input_b, basestring):
+        return TypeError
+    words = str.split(input_b)
+    input_a.close()
+    dct,prev1,prev2,prev3, = {},'','',''
+    for x in words:
+        if prev1 != '' and prev2 != '' and prev3 != '':
+            key = (prev3, prev2, prev1)
+            if key in dct:
+               dct[key].append(x)
+            else:
+               dct[key] = [x]
+        prev3 = prev2
+        prev2 = prev1
+        prev1 = x
+    key,fil = (),[]
+    while True:
+        if key in dct:
+            word = choice(dct[key])
+            fil.append(word)
+            key = (key[-2],key[-1],word)
+        else:
+            key = r.choice(dct.keys())
+        syllables = 0
+        for i in fil:
+            i2 = len(hy.hyphenate_word(i))
+            syllables = syllables + i2
+        if syllables == 17:
+                sy = 0
+                for i in fil:
+                    i2 = hy.hyphenate_word(i)
+                    sy = sy + len(i2)
+                    if sy == 5 or sy == 13:
+                        fil.insert(fil.index(i)+1,"\n")
+                if fil.count("\n")==2:
+                    break
+                else:
+                    fil = []
+        if syllables > 17:
+                fil = []
+
+
+    fil = [w.replace('#', '\#')for w in fil]
+    fil = [w.replace('$','\$')for w in fil]
+    fil = [w.replace('%','\%')for w in fil]
+    fil = [w.replace('&','\&')for w in fil]
+    fil = [w.replace('^','\textasciicircum')for w in fil]
+    fil = [w.replace('_', '\_')for w in fil]
+    fil = [w.replace('{','\{')for w in fil]
+    fil = [w.replace('}','\}')for w in fil]
+    fil = [w.replace('~','\textasciitilde{}')for w in fil]
+    fil = " " + ' '.join(fil)
+    print fil
+    sendmessage(fil)
+
+run()
